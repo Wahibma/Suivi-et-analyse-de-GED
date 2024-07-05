@@ -7,6 +7,9 @@ from datetime import timedelta
 from PIL import Image
 import os
 import csv
+import seaborn as sns
+import matplotlib.colors as mcolors
+import numpy as np
 
 # Fonction pour afficher le logo
 def afficher_logo():
@@ -66,7 +69,7 @@ def charger_donnees(chemin_fichier):
     donnees_brutes = pd.read_csv(chemin_fichier, delimiter=';', encoding='iso-8859-1', low_memory=False, quoting=csv.QUOTE_NONE)
 
     # Définir les colonnes attendues dans l'ordre correct
-    colonnes_attendues = ['PROJET', 'PHASE', 'EMET', 'LOT', 'LOT1', 'NIVEAU', 'ZONE', 'TYPE DE DOCUMENT', 'Numéro', 'INDICE', 'Libellé du document', 'Dernier indice', 'Date dépôt GED', 'Date de réception papier', 'Ajouté par']
+    colonnes_attendues = ['PROJET', 'PHASE', 'EMET', 'LOT', 'NIVEAU', 'ZONE', 'TYPE DE DOCUMENT', 'Numéro', 'INDICE', 'Libellé du document', 'Dernier indice', 'Date dépôt GED', 'Date de réception papier', 'Ajouté par']
     expected_columns = len(colonnes_attendues)
 
     # S'assurer que toutes les colonnes attendues sont présentes, sinon ajouter des colonnes vides
@@ -84,29 +87,30 @@ def charger_donnees(chemin_fichier):
     for index in decalage_lignes:
         donnees.loc[index] = corriger_decalage_ligne(donnees.loc[index], expected_columns)
 
+    # Vérifier que toutes les colonnes attendues sont bien présentes après réorganisation
+    for col in colonnes_attendues:
+        if col not in donnees.columns:
+            raise KeyError(f"La colonne attendue '{col}' est absente du fichier CSV après réorganisation.")
+
     # Convertir les dates
     donnees['Date dépôt GED'] = pd.to_datetime(donnees['Date dépôt GED'], format='%d/%m/%Y', errors='coerce')
 
-    # Calculer la première et la dernière date pour chaque type et libellé de document
-    df_dates = donnees.groupby(['TYPE DE DOCUMENT', 'LOT', 'Libellé du document'])['Date dépôt GED'].agg(['min', 'max']).reset_index()
-
-    # Ajouter une colonne pour la différence en jours entre les deux dates
-    df_dates['Différence en jours'] = (df_dates['max'] - df_dates['min']).dt.days
-
-    # Calculer le nombre d'indices pour chaque type de document unique
-    donnees['Nombre d\'indices'] = donnees.groupby(['TYPE DE DOCUMENT', 'LOT', 'Libellé du document'])['INDICE'].transform('nunique')
-
-    # Ajouter une colonne "Indices utilisés" qui contient tous les indices utilisés pour chaque type de document unique
-    donnees['Indices utilisés'] = donnees.groupby(['TYPE DE DOCUMENT', 'LOT', 'Libellé du document'])['INDICE'].transform(lambda x: ', '.join(sorted(set(x))))
-
-    # Fusionner les deux DataFrames sur les colonnes TYPE DE DOCUMENT, LOT, et Libellé du document
-    df_combine = pd.merge(df_dates, donnees[['LOT', 'TYPE DE DOCUMENT', 'Libellé du document', 'Nombre d\'indices', 'Indices utilisés']].drop_duplicates(), on=['LOT', 'TYPE DE DOCUMENT', 'Libellé du document'])
-    
-    return df_combine
+    return donnees
 
 # Fonction pour charger les données depuis un fichier téléchargé
 def charger_donnees_uploaded(file):
     return charger_donnees(file)
+
+# Fonction pour prétraiter les données
+def pretraiter_donnees(donnees):
+    donnees = donnees.sort_values(by=['TYPE DE DOCUMENT', 'Date dépôt GED'])
+    group = donnees.groupby(['TYPE DE DOCUMENT', 'LOT', 'Libellé du document'])
+    donnees['Date première version'] = group['Date dépôt GED'].transform('min')
+    donnees['Date dernière version'] = group['Date dépôt GED'].transform('max')
+    donnees['Différence en jours'] = (donnees['Date dernière version'] - donnees['Date première version']).dt.days
+    donnees['Nombre d\'indices'] = group['INDICE'].transform('nunique')
+    donnees['Indices utilisés'] = group['INDICE'].transform(lambda x: ', '.join(sorted(x.unique())))
+    return donnees
 
 # Fonction pour afficher le menu latéral
 def afficher_menu():
@@ -140,6 +144,9 @@ def synchroniser_filtres(projets):
 
 # Fonction pour afficher les graphiques selon l'onglet sélectionné
 def afficher_graphique(selectionne, donnees, projets, projet_selectionne):
+    if selectionne in ["Nombre d'indices par type de document", "Durée entre versions de documents"]:
+        donnees = pretraiter_donnees(donnees)
+
     # Onglet 1: Flux des documents
     if selectionne == "Flux des documents":
         st.header("Flux des documents")
@@ -328,25 +335,57 @@ def afficher_graphique(selectionne, donnees, projets, projet_selectionne):
     # Onglet 6: Nombre d'indices par type de document
     elif selectionne == "Nombre d'indices par type de document":
         st.header("Nombre d'indices par type de document")
-        type_calcul = st.selectbox('Sélectionnez le type de calcul', ['mean', 'max'], key='calcul_indices_type')
-        representation = st.selectbox('Sélectionnez le type de représentation', ['Graphique barré', 'Tableau'], key='rep_indices_type')
-        if representation == "Tableau":
-            if type_calcul == 'mean':
-                resultats = donnees.groupby('TYPE DE DOCUMENT')['Nombre d\'indices'].mean().reset_index()
-                resultats.columns = ['TYPE DE DOCUMENT', 'Nombre moyen d\'indices']
-            elif type_calcul == 'max':
-                resultats = donnees.groupby('TYPE DE DOCUMENT')['Nombre d\'indices'].max().reset_index()
-                resultats.columns = ['TYPE DE DOCUMENT', 'Nombre maximum d\'indices']
-            st.dataframe(resultats)
-        elif representation == "Graphique barré":
-            if type_calcul == 'mean':
-                resultats = donnees.groupby('TYPE DE DOCUMENT')['Nombre d\'indices'].mean().reset_index()
-                title = 'Nombre moyen d\'indices par Type de Document'
-            elif type_calcul == 'max':
-                resultats = donnees.groupby('TYPE DE DOCUMENT')['Nombre d\'indices'].max().reset_index()
-                title = 'Nombre maximum d\'indices par Type de Document'
-            fig = px.bar(resultats, x='TYPE DE DOCUMENT', y=resultats.columns[1], title=title)
-            st.plotly_chart(fig, use_container_width=True)
+        
+        # Calculer le nombre moyen d'indices par type de document
+        moyenne_indices_par_type = donnees.groupby('TYPE DE DOCUMENT')['Nombre d\'indices'].max().reset_index()
+        moyenne_indices_par_type.columns = ['TYPE DE DOCUMENT', 'Nombre moyen d\'indices']
+
+        # Arrondir les valeurs au nombre entier supérieur le plus proche
+        moyenne_indices_par_type['Nombre moyen d\'indices'] = np.ceil(moyenne_indices_par_type['Nombre moyen d\'indices'])
+
+        # Trier les données par ordre décroissant du nombre moyen d'indices
+        moyenne_indices_par_type = moyenne_indices_par_type.sort_values(by='Nombre moyen d\'indices', ascending=False)
+
+        # Définition de la palette de couleurs
+        palette = sns.color_palette("husl", len(moyenne_indices_par_type['TYPE DE DOCUMENT'].unique()))
+        palette_hex = [mcolors.rgb2hex(color) for color in palette]
+
+        # Graphique à barres avec étiquettes de données
+        fig = px.bar(moyenne_indices_par_type,
+                     x='TYPE DE DOCUMENT',
+                     y='Nombre moyen d\'indices',
+                     text='Nombre moyen d\'indices',
+                     title='Nombre moyen d\'indices par type de document',
+                     color='TYPE DE DOCUMENT',
+                     color_discrete_sequence=palette_hex)
+
+        # Mise à jour des traces pour afficher les étiquettes sans décimales et ajuster la transparence
+        fig.update_traces(texttemplate='%{text:.0f}', marker=dict(line=dict(color='#000000', width=1.5)))
+
+        # Mise à jour de la mise en page
+        fig.update_layout(
+            xaxis_title='Type de Document',
+            yaxis_title='Nombre moyen d\'indices',
+            title={
+                'text': 'Nombre moyen d\'indices par type de document',
+                'y': 0.9,
+                'x': 0.5,
+                'xanchor': 'center',
+                'yanchor': 'top'
+            },
+            font=dict(
+                family="Courier New, monospace",
+                size=12,
+                color="RebeccaPurple"
+            ),
+            xaxis_tickangle=-45,
+            plot_bgcolor='rgba(0,0,0,0)',
+            paper_bgcolor='rgba(0,0,0,0.1)',
+            legend_title_text='Type de Document'
+        )
+
+        # Affichage du graphique
+        st.plotly_chart(fig, use_container_width=True)
 
     # Onglet 7: Durée entre versions de documents
     elif selectionne == "Durée entre versions de documents":
