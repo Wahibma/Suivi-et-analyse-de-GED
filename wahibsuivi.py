@@ -9,7 +9,7 @@ import os
 
 # Fonction pour afficher le logo
 def afficher_logo():
-    chemin_logo = os.path.join('logo1.jpeg')  # Remplacez par le chemin relatif vers votre logo
+    chemin_logo = os.path.join('logo1.jpeg')  
     try:
         logo = Image.open(chemin_logo)
         st.image(logo, width=250)
@@ -278,7 +278,7 @@ def afficher_graphique(selectionne, donnees, projets, projet_selectionne):
                     showarrow=True, arrowhead=2
                 )
             fig_barre.update_layout(
-                title='Comparaison de la masse de documents entre les chantiers',
+                title='Analyse de la masse de document par projet',
                 xaxis_title='Chantier', yaxis_title='Masse de documents',
                 font=dict(size=15),
                 height=450, width=1200,
