@@ -294,7 +294,7 @@ def afficher_graphique(selectionne, donnees, projets, projet_selectionne):
     elif selectionne == "Nombre d'indices par type de document":
         st.header("Nombre d'indices par type de document")
         type_calcul = st.selectbox('Sélectionnez le type de calcul', ['mean', 'max'], key='calcul_indices_type')
-        representation = st.selectbox('Sélectionnez le type de représentation', ['Graphique barré', 'Tableau'], key='rep_indices_type')
+        representation = st.selectbox('Sélectionnez le type de représentation', ['Graphique barre', 'Tableau'], key='rep_indices_type')
         if representation == "Tableau":
             if type_calcul == 'mean':
                 resultats = donnees.groupby('TYPE DE DOCUMENT')['Nombre d\'indices'].mean().reset_index()
