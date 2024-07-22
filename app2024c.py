@@ -78,7 +78,7 @@ def afficher_menu():
     with st.sidebar:
         selectionne = option_menu(
             menu_title="Menu",
-            options=["Flux des documents", "Évolution des types de documents", "Analyse des documents par lot et indice", "Identification des acteurs principaux", "Comparaison de la masse de documents", "Nombre d'indices par type de document", "Durée entre versions de documents"],
+            options=["Flux des documents", "Évolution des types de documents", "Analyse des documents par lot et indice", "Identification des acteurs principaux", "Analyse de la masse de documents par projet", "Nombre d'indices par type de document", "Durée entre versions de documents"],
             icons=["exchange", "line-chart", "bar-chart", "users", "chart-bar", "file-text", "clock"],
             menu_icon="cast",
             default_index=0,
@@ -225,18 +225,18 @@ def afficher_graphique(selectionne, donnees, projets, projet_selectionne):
         fig_ajoute_par.update_layout(margin=dict(l=20, r=20, t=40, b=20), height=480, width=1200)
         st.plotly_chart(fig_ajoute_par, use_container_width=True)
 
-    # Onglet 5: Comparaison de la masse de documents entre projets
-    elif selectionne == "Comparaison de la masse de documents":
-        st.header("Comparaison de la masse de documents")
+    # Onglet 5: Analyse de la masse de documents par projet
+    elif selectionne == "Analyse de la masse de documents par projet":
+        st.header("Analyse de la masse de documents par projet")
         periode_selectionnee = st.radio(
             'Sélectionnez la période',
             options=['6m', '12m', 'all'],
-            format_func=lambda x: '6 premiers mois' if x == '6m' else '12 premiers mois' if x == '12m' else 'Toute la période',
+            format_func=lambda x: '6 premiers mois' si x == '6m' else '12 premiers mois' si x == '12m' else 'Toute la période',
             horizontal=True
         )
         projets_selectionnes = st.multiselect('Sélectionnez les projets', list(projets.keys()), default=list(projets.keys()))
 
-        def mise_a_jour_comparaison_masse_documents(projets_selectionnes, periode_selectionnee):
+        def mise_a_jour_analyse_masse_documents(projets_selectionnes, periode_selectionnee):
             donnees_barre = []
             for projet in projets_selectionnes:
                 df = projets[projet]
@@ -278,7 +278,7 @@ def afficher_graphique(selectionne, donnees, projets, projet_selectionne):
                     showarrow=True, arrowhead=2
                 )
             fig_barre.update_layout(
-                title='Comparaison de la masse de documents entre les chantiers',
+                title='Analyse de la masse de documents par projet',
                 xaxis_title='Chantier', yaxis_title='Masse de documents',
                 font=dict(size=15),
                 height=450, width=1200,
@@ -287,7 +287,7 @@ def afficher_graphique(selectionne, donnees, projets, projet_selectionne):
             )
             return fig_barre
 
-        fig1 = mise_a_jour_comparaison_masse_documents(projets_selectionnes, periode_selectionnee)
+        fig1 = mise_a_jour_analyse_masse_documents(projets_selectionnes, periode_selectionnee)
         st.plotly_chart(fig1, use_container_width=True)
 
     # Onglet 6: Nombre d'indices par type de document
@@ -320,7 +320,7 @@ def afficher_graphique(selectionne, donnees, projets, projet_selectionne):
     elif selectionne == "Durée entre versions de documents":
         st.header("Durée entre versions de documents")
         type_calcul = st.selectbox('Sélectionnez le type de calcul', ['mean', 'max'], key='calcul_duree_versions_type')
-        representation = st.selectbox('Sélectionnez le type de représentation', ['Boxplot', 'Graphique barré', 'Tableau'], key='rep_duree_versions_type')
+        representation = st.selectbox('Sélectionnez le type de représentation', ['Boxplot', 'Graphique barre', 'Tableau'], key='rep_duree_versions_type')
         if representation == "Tableau":
             if type_calcul == 'mean':
                 resultats = donnees.groupby('TYPE DE DOCUMENT')['Différence en jours'].mean().reset_index()
@@ -334,7 +334,7 @@ def afficher_graphique(selectionne, donnees, projets, projet_selectionne):
             fig = px.box(donnees, x='TYPE DE DOCUMENT', y='Différence en jours', title='Durée entre Versions par Type de Document',
                          labels={'Différence en jours': 'Durée entre Versions (jours)', 'TYPE DE DOCUMENT': 'Type de Document'})
             st.plotly_chart(fig, use_container_width=True)
-        elif representation == "Graphique barré":
+        elif representation == "Graphique barre":
             if type_calcul == 'mean':
                 resultats = donnees.groupby('TYPE DE DOCUMENT')['Différence en jours'].mean().reset_index()
                 title = 'Durée moyenne entre versions (jours) par Type de Document'
