@@ -78,7 +78,7 @@ def afficher_menu():
     with st.sidebar:
         selectionne = option_menu(
             menu_title="Menu",
-            options=["Flux des documents", "Évolution des types de documents", "Analyse des documents par lot et indice", "Identification des acteurs principaux", "Comparaison de la masse de documents", "Nombre d'indices par type de document", "Durée entre versions de documents"],
+            options=["Flux des documents", "Évolution des types de documents", "Analyse des documents par lot et indice", "Identification des acteurs principaux", "Analyse de la masse de documents par projet", "Nombre d'indices par type de document", "Durée entre versions de documents"],
             icons=["exchange", "line-chart", "bar-chart", "users", "chart-bar", "file-text", "clock"],
             menu_icon="cast",
             default_index=0,
