@@ -231,7 +231,7 @@ def afficher_graphique(selectionne, donnees, projets, projet_selectionne):
         periode_selectionnee = st.radio(
             'Sélectionnez la période',
             options=['6m', '12m', 'all'],
-            format_func=lambda x: '6 premiers mois' si x == '6m' else '12 premiers mois' si x == '12m' else 'Toute la période',
+            format_func=lambda x: '6 premiers mois' if x == '6m' else '12 premiers mois' if x == '12m' else 'Toute la période',
             horizontal=True
         )
         projets_selectionnes = st.multiselect('Sélectionnez les projets', list(projets.keys()), default=list(projets.keys()))
