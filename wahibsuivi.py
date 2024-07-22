@@ -303,7 +303,7 @@ def afficher_graphique(selectionne, donnees, projets, projet_selectionne):
                 resultats = donnees.groupby('TYPE DE DOCUMENT')['Nombre d\'indices'].max().reset_index()
                 resultats.columns = ['TYPE DE DOCUMENT', 'Nombre maximum d\'indices']
             st.dataframe(resultats)
-        elif representation == "Graphique barré":
+        elif representation == "Graphique barre":
             if type_calcul == 'mean':
                 resultats = donnees.groupby('TYPE DE DOCUMENT')['Nombre d\'indices'].mean().reset_index()
                 title = 'Nombre moyen d\'indices par Type de Document'
