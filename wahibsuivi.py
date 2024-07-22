@@ -226,7 +226,7 @@ def afficher_graphique(selectionne, donnees, projets, projet_selectionne):
         st.plotly_chart(fig_ajoute_par, use_container_width=True)
 
     # Onglet 5: Comparaison de la masse de documents entre projets
-    elif selectionne == "Comparaison de la masse de documents":
+    elif selectionne == "Analyse de la masse de documents par projet":
         st.header("Comparaison de la masse de documents")
         periode_selectionnee = st.radio(
             'Sélectionnez la période',
