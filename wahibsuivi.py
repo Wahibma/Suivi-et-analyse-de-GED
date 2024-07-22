@@ -227,7 +227,7 @@ def afficher_graphique(selectionne, donnees, projets, projet_selectionne):
 
     # Onglet 5: Comparaison de la masse de documents entre projets
     elif selectionne == "Analyse de la masse de documents par projet":
-        st.header("Comparaison de la masse de documents")
+        st.header("Analyse de la masse de documents par projet")
         periode_selectionnee = st.radio(
             'Sélectionnez la période',
             options=['6m', '12m', 'all'],
