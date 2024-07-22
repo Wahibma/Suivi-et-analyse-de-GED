@@ -9,7 +9,7 @@ import os
 
 # Fonction pour afficher le logo
 def afficher_logo():
-    chemin_logo = os.path.join('logo1.jpeg')  
+    chemin_logo = os.path.join('logo1.jpeg')  # Remplacez par le chemin relatif vers votre logo
     try:
         logo = Image.open(chemin_logo)
         st.image(logo, width=250)
@@ -78,7 +78,7 @@ def afficher_menu():
     with st.sidebar:
         selectionne = option_menu(
             menu_title="Menu",
-            options=["Flux des documents", "Évolution des types de documents", "Analyse des documents par lot et indice", "Identification des acteurs principaux", "Analyse de la masse de documents par projet", "Nombre d'indices par type de document", "Durée entre versions de documents"],
+            options=["Flux des documents", "Évolution des types de documents", "Analyse des documents par lot et indice", "Identification des acteurs principaux", "Comparaison de la masse de documents", "Nombre d'indices par type de document", "Durée entre versions de documents"],
             icons=["exchange", "line-chart", "bar-chart", "users", "chart-bar", "file-text", "clock"],
             menu_icon="cast",
             default_index=0,
@@ -226,8 +226,8 @@ def afficher_graphique(selectionne, donnees, projets, projet_selectionne):
         st.plotly_chart(fig_ajoute_par, use_container_width=True)
 
     # Onglet 5: Comparaison de la masse de documents entre projets
-    elif selectionne == "Analyse de la masse de documents par projet":
-        st.header("Analyse de la masse de documents par projet")
+    elif selectionne == "Comparaison de la masse de documents":
+        st.header("Comparaison de la masse de documents")
         periode_selectionnee = st.radio(
             'Sélectionnez la période',
             options=['6m', '12m', 'all'],
@@ -278,7 +278,7 @@ def afficher_graphique(selectionne, donnees, projets, projet_selectionne):
                     showarrow=True, arrowhead=2
                 )
             fig_barre.update_layout(
-                title='Analyse de la masse de document par projet',
+                title='Comparaison de la masse de documents entre les chantiers',
                 xaxis_title='Chantier', yaxis_title='Masse de documents',
                 font=dict(size=15),
                 height=450, width=1200,
