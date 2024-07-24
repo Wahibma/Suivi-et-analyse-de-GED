@@ -65,15 +65,8 @@ def charger_donnees_uploaded(file):
 # Fonction pour prétraiter les données
 def pretraiter_donnees(donnees):
     donnees = donnees.sort_values(by=['TYPE DE DOCUMENT', 'Libellé du document', 'Date dépôt GED'])
-    group = donnees.groupby(['TYPE DE DOCUMENT', 'LOT', 'Libellé du document'])
-    donnees['Date première version'] = group['Date dépôt GED'].transform('min')
-    donnees['Date dernière version'] = group['Date dépôt GED'].transform('max')
-    donnees['Différence en jours'] = (donnees['Date dernière version'] - donnees['Date première version']).dt.days
-    donnees['Nombre d\'indices'] = group['INDICE'].transform('nunique')
-    donnees['Indices utilisés'] = group['INDICE'].transform(lambda x: ', '.join(sorted(x.unique())))
-
-    # Calculer les délais entre chaque version
-    donnees['Délais entre versions'] = group['Date dépôt GED'].diff().dt.days
+    group = donnees.groupby(['TYPE DE DOCUMENT', 'Libellé du document'])
+    donnees['Délais entre versions (jours)'] = group['Date dépôt GED'].diff().dt.days
     return donnees
 
 # Fonction pour afficher le menu latéral
@@ -326,29 +319,39 @@ def afficher_graphique(selectionne, donnees, projets, projet_selectionne):
         representation = st.selectbox('Sélectionnez le type de représentation', ['Boxplot', 'Graphique barre', 'Tableau'], key='rep_duree_versions_type')
         if representation == "Tableau":
             if type_calcul == 'mean':
-                resultats = donnees.groupby('TYPE DE DOCUMENT')['Délais entre versions'].mean().reset_index()
+                resultats = donnees.groupby('TYPE DE DOCUMENT')['Délais entre versions (jours)'].mean().reset_index()
                 resultats.columns = ['TYPE DE DOCUMENT', 'Durée moyenne entre versions (jours)']
             elif type_calcul == 'max':
-                resultats = donnees.groupby('TYPE DE DOCUMENT')['Délais entre versions'].max().reset_index()
+                resultats = donnees.groupby('TYPE DE DOCUMENT')['Délais entre versions (jours)'].max().reset_index()
                 resultats.columns = ['TYPE DE DOCUMENT', 'Durée maximum entre versions (jours)']
             resultats = resultats.sort_values(by=resultats.columns[1], ascending=False)
             st.dataframe(resultats)
         elif representation == "Boxplot":
-            fig = px.box(donnees, x='TYPE DE DOCUMENT', y='Délais entre versions', title='Durée entre Versions par Type de Document',
-                         labels={'Délais entre versions': 'Durée entre Versions (jours)', 'TYPE DE DOCUMENT': 'Type de Document'})
+            fig = px.box(donnees, x='TYPE DE DOCUMENT', y='Délais entre versions (jours)', title='Durée entre Versions par Type de Document',
+                         labels={'Délais entre versions (jours)': 'Durée entre Versions (jours)', 'TYPE DE DOCUMENT': 'Type de Document'})
             st.plotly_chart(fig, use_container_width=True)
         elif representation == "Graphique barre":
             if type_calcul == 'mean':
-                resultats = donnees.groupby('TYPE DE DOCUMENT')['Délais entre versions'].mean().reset_index()
+                resultats = donnees.groupby('TYPE DE DOCUMENT')['Délais entre versions (jours)'].mean().reset_index()
                 title = 'Durée moyenne entre versions (jours) par Type de Document'
             elif type_calcul == 'max':
-                resultats = donnees.groupby('TYPE DE DOCUMENT')['Délais entre versions'].max().reset_index()
+                resultats = donnees.groupby('TYPE DE DOCUMENT')['Délais entre versions (jours)'].max().reset_index()
                 title = 'Durée maximum entre versions (jours) par Type de Document'
             resultats = resultats.sort_values(by=resultats.columns[1], ascending=False)
             fig = px.bar(resultats, x='TYPE DE DOCUMENT', y=resultats.columns[1], title=title, color='TYPE DE DOCUMENT')
             fig.update_layout(showlegend=True, legend_title_text='Type de Document')
             fig.update_traces(texttemplate='%{y:.2f}', textposition='outside')
             st.plotly_chart(fig, use_container_width=True)
+
+        # Afficher les délais entre chaque version pour chaque document
+        st.subheader("Détails des délais entre chaque version")
+        for type_doc in donnees['TYPE DE DOCUMENT'].unique():
+            st.write(f"Type de Document: {type_doc}")
+            subset = donnees[donnees['TYPE DE DOCUMENT'] == type_doc]
+            fig_details = px.bar(subset, x='Libellé du document', y='Délais entre versions (jours)', color='INDICE',
+                                 title=f'Délais entre versions pour {type_doc}', labels={'Délais entre versions (jours)': 'Délais entre versions (jours)'})
+            fig_details.update_layout(showlegend=True, legend_title_text='Indice')
+            st.plotly_chart(fig_details, use_container_width=True)
 
 # Exécution principale de l'application
 if __name__ == "__main__":
