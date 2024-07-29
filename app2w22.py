@@ -374,7 +374,7 @@ def afficher_graphique(selectionne, donnees, projets, projet_selectionne):
         donnees_gantt = donnees_gantt.sort_values('Date début')
 
         # Utiliser une palette de couleurs dynamique pour éviter les répétitions
-        couleurs = px.colors.qualitative.Plotly * 5  # Multiplier la palette pour plus de variété
+        couleurs = px.colors.qualitative.Plotly * 10  # Multiplier la palette pour plus de variété
 
         fig_gantt = px.timeline(
             donnees_gantt,
@@ -393,7 +393,7 @@ def afficher_graphique(selectionne, donnees, projets, projet_selectionne):
             width=1000
         )
         fig_gantt.update_traces(
-            hovertemplate=f'<b>{categorie_gantt}:</b> %{{y}}<br><b>FIN:</b> %{{x|%d %b %Y}}<br><b>Durée:</b> %{{customdata[0]}} jours<br><b>Nombre de documents:</b> %{{customdata[1]}}'
+            hovertemplate=f'<b>{categorie_gantt}:</b> %{{y}}<br><b>Fin:</b> %{{x|%d %b %Y}}<br><b>Durée:</b> %{{customdata[0]}} jours<br><b>Nombre de documents:</b> %{{customdata[1]}}'
         )
         st.plotly_chart(fig_gantt, use_container_width=True)
 
