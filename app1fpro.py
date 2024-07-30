@@ -404,7 +404,7 @@ def afficher_graphique(selectionne, donnees, projets, projet_selectionne):
             width=1000
         )
         fig_gantt.update_traces(
-            hovertemplate=f'<b>{categorie_gantt}:</b> %{{y}}<br><b>Début:</b> %{{x|%d %b %Y}}<br><b>Fin:</b> %{{x_end|%d %b %Y}}<br><b>Durée:</b> %{{customdata[0]}} jours<br><b>Nombre de documents:</b> %{{customdata[1]}}<br><b>Type de documents:</b> %{{customdata[2]}}'
+            hovertemplate=f'<b>{categorie_gantt}:</b> %{{y}}<br><b>Débu:</b> %{{x|%d %b %Y}}<br><b>Fin:</b> %{{x_end|%d %b %Y}}<br><b>Durée:</b> %{{customdata[0]}} jours<br><b>Nombre de documents:</b> %{{customdata[1]}}<br><b>Type de documents:</b> %{{customdata[2]}}'
         )
         st.plotly_chart(fig_gantt, use_container_width=True)
 
