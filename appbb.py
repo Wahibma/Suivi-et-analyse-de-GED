@@ -334,6 +334,7 @@ def afficher_graphique(selectionne, donnees, projets, projet_selectionne):
         type_calcul = st.selectbox('Sélectionnez le type de calcul', ['mean', 'max'], key='calcul_duree_versions_type')
         categorie = st.selectbox('Sélectionnez la catégorie', ['LOT', 'TYPE DE DOCUMENT'], key='categorie_duree_versions_type')  # Choix entre Lot et Type de Document
         representation = st.selectbox('Sélectionnez le type de représentation', ['Graphique barre', 'Tableau'], key='rep_duree_versions_type', index=0)  # Par défaut à "Graphique barre"
+        
         if representation == "Tableau":
             if type_calcul == 'mean':
                 resultats = donnees.groupby(categorie)['Durée entre versions'].mean().reset_index()
@@ -355,6 +356,26 @@ def afficher_graphique(selectionne, donnees, projets, projet_selectionne):
             fig.update_layout(showlegend=True, legend_title_text=categorie)
             fig.update_traces(texttemplate='%{y:.2f}', textposition='outside')
             st.plotly_chart(fig, use_container_width=True)
+
+        # Calcul des durées entre indices pour chaque type de document
+        st.subheader("Durées entre indices par type de document")
+        durées_indices = []
+        for doc_type, group in donnees.groupby('TYPE DE DOCUMENT'):
+            group = group.sort_values(by=['Libellé du document', 'INDICE'])
+            group['Durée entre indices'] = group.groupby('Libellé du document')['Date dépôt GED'].diff().dt.days
+            for _, row in group.iterrows():
+                if pd.notna(row['Durée entre indices']):
+                    durées_indices.append({
+                        'Type de Document': doc_type,
+                        'Document': row['Libellé du document'],
+                        'Indice précédent': row['INDICE'],
+                        'Durée entre indices (jours)': row['Durée entre indices']
+                    })
+        df_durées_indices = pd.DataFrame(durées_indices)
+        if not df_durées_indices.empty:
+            st.dataframe(df_durées_indices)
+        else:
+            st.write("Pas de données disponibles pour les durées entre indices.")
 
     # Onglet 8: Calendrier des Projets
     elif selectionne == "Calendrier des Projets":
