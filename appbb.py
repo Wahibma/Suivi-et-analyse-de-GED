@@ -356,76 +356,52 @@ def afficher_graphique(selectionne, donnees, projets, projet_selectionne):
             fig.update_traces(texttemplate='%{y:.2f}', textposition='outside')
             st.plotly_chart(fig, use_container_width=True)
 
-    # Onglet 8: Calendrier des Projets avec découpage par type de document et taille ajustée
+    # Onglet 8: Calendrier des Projets
     elif selectionne == "Calendrier des Projets":
         st.header("Calendrier des Projets")
+        # Ajouter le selectbox pour choisir entre "Lot" et "Type de Document"
+        categorie_gantt = st.selectbox('Sélectionnez la catégorie', ['LOT', 'TYPE DE DOCUMENT'], key='categorie_gantt')  # Choix entre Lot et Type de Document
 
-        # Sélection de la catégorie pour le diagramme de Gantt
-        categorie_gantt = 'LOT'
-        
         # Préparer les données pour le diagramme de Gantt
-        donnees_gantt = donnees.groupby([categorie_gantt, 'TYPE DE DOCUMENT']).agg({
+        donnees_gantt = donnees.groupby(categorie_gantt).agg({
             'Date dépôt GED': ['min', 'max'],
             'Libellé du document': 'count'
         }).reset_index()
-        donnees_gantt.columns = [categorie_gantt, 'TYPE DE DOCUMENT', 'Date début', 'Date fin', 'Nombre de documents']
+        donnees_gantt.columns = [categorie_gantt, 'Date début', 'Date fin', 'Nombre de documents']
         donnees_gantt['Durée en jours'] = (donnees_gantt['Date fin'] - donnees_gantt['Date début']).dt.days
-        
-        # Trier les catégories par date de début
-        donnees_gantt = donnees_gantt.sort_values(by='Date début', ascending=False)
 
-        fig = go.Figure()
+        # Ajouter les types de documents utilisés pour chaque lot dans l'ordre d'apparition
+        donnees_sorted = donnees.sort_values(by='Date dépôt GED')
+        donnees_gantt['Types de documents'] = donnees_sorted.groupby(categorie_gantt)['TYPE DE DOCUMENT'].apply(lambda x: ', '.join(x.drop_duplicates())).reset_index(drop=True)
+
+        # Trier les catégories par date de début
+        donnees_gantt = donnees_gantt.sort_values('Date début')
 
         # Utiliser une palette de couleurs dynamique pour éviter les répétitions
-        couleurs = px.colors.qualitative.Plotly * 10  # Multiplier la palette pour plus de variété
-        color_map = {doc_type: couleurs[i % len(couleurs)] for i, doc_type in enumerate(donnees_gantt['TYPE DE DOCUMENT'].unique())}
-        
-        for lot in donnees_gantt[categorie_gantt].unique():
-            lot_data = donnees_gantt[donnees_gantt[categorie_gantt] == lot]
-            for doc_type in lot_data['TYPE DE DOCUMENT'].unique():
-                doc_data = lot_data[lot_data['TYPE DE DOCUMENT'] == doc_type]
-                fig.add_trace(go.Bar(
-                    x=[doc_data['Date début'].iloc[0], doc_data['Date fin'].iloc[0]],
-                    y=[lot, lot],
-                    orientation='h',
-                    marker=dict(
-                        color=color_map[doc_type],
-                        line=dict(color='rgba(0,0,0,0.6)', width=doc_data['Nombre de documents'].iloc[0] / 10)
-                    ),
-                    name=f'{doc_type} ({doc_data["Nombre de documents"].iloc[0]})',
-                    hoverinfo='x+y+name'
-                ))
+        couleurs = px.colors.qualitative.Plotly * 5  # Multiplier la palette pour plus de variété
 
-        fig.update_layout(
-            title='Calendrier des Projets par LOT et Type de Document',
-            xaxis_title='Date',
-            yaxis_title='LOT',
-            barmode='stack',
-            height=600,
-            width=1200,
-            hovermode='closest',
-            legend_title='Type de Document',
-            yaxis=dict(categoryorder='total descending')  # Trier les lots par date de début en ordre décroissant
+        fig_gantt = px.timeline(
+            donnees_gantt,
+            x_start='Date début',
+            x_end='Date fin',
+            y=categorie_gantt,
+            color=categorie_gantt,
+            hover_data=['Durée en jours', 'Nombre de documents', 'Types de documents'],
+            color_discrete_sequence=couleurs,
+            title=f'Calendrier des Projets par {categorie_gantt}'
         )
-
-        st.plotly_chart(fig, use_container_width=True)
+        fig_gantt.update_layout(
+            xaxis_title='Date',
+            yaxis_title=categorie_gantt,
+            height=600,
+            width=1000
+        )
+        fig_gantt.update_traces(
+            hovertemplate=f'<b>{categorie_gantt}:</b> %{{y}}<br><b>Début:</b> %{{x|%d %b %Y}}<br><b>Durée:</b> %{{customdata[0]}} jours<br><b>Nombre de documents:</b> %{{customdata[1]}}<br><b>Types de documents:</b> %{{customdata[2]}}'
+        )
+        st.plotly_chart(fig_gantt, use_container_width=True)
 
 # Exécution principale de l'application
-# Exécution princiaple de l'application
-if __name__ == "__main__" :
-    afficher_logo()
-    style_entete()
-    selectionne = afficher_menu ()
-    projets = gerer_telechargement()
-    if projets :
-        donnees, projet_selectionne = synchroniser_filtres(projets)
-        donnees = pretraiter_donnees(donnees)
-        afficher_graphique(selectionne, donnees, projets, projet_selectionne)
-
-    else:
-        st.write("Veuillez télécharger les donnnées pour continuer .")
-
-
 if __name__ == "__main__":
     afficher_logo()
     style_entete()
