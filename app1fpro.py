@@ -74,6 +74,14 @@ def pretraiter_donnees(donnees):
     # Remplir les valeurs manquantes avant la transformation
     donnees['INDICE'] = donnees['INDICE'].fillna('')
     donnees['Indices utilisés'] = group['INDICE'].transform(lambda x: ', '.join(sorted(set(x))))
+
+    # Ajouter les colonnes Date début et Date fin pour chaque LOT
+    donnees['Date début'] = donnees.groupby('LOT')['Date dépôt GED'].transform('min')
+    donnees['Date fin'] = donnees.groupby('LOT')['Date dépôt GED'].transform('max')
+    
+    # Calculer les durées entre chaque version pour chaque document
+    donnees = donnees.sort_values(by=['Libellé du document', 'Date dépôt GED'])
+    donnees['Durée entre versions'] = donnees.groupby('Libellé du document')['Date dépôt GED'].diff().dt.days
     
     return donnees
 
@@ -82,7 +90,7 @@ def afficher_menu():
     with st.sidebar:
         selectionne = option_menu(
             menu_title="Menu",
-            options=["Flux des documents", "Évolution des types de documents", "Analyse des documents par lot et indice", "Identification des acteurs principaux", "Analyse de la masse de documents par projet", "Nombre d'indices par type de document", "Durée entre versions de documents", "Diagramme de Gantt séquentiel"],
+            options=["Flux des documents", "Évolution des types de documents", "Analyse des documents par lot et indice", "Identification des acteurs principaux", "Analyse de la masse de documents par projet", "Nombre d'indices par type de document", "Durée entre versions de documents", "Calendrier des Projets"],
             icons=["exchange", "line-chart", "bar-chart", "users", "chart-bar", "file-text", "clock", "calendar"],
             menu_icon="cast",
             default_index=0,
@@ -298,7 +306,7 @@ def afficher_graphique(selectionne, donnees, projets, projet_selectionne):
     elif selectionne == "Nombre d'indices par type de document":
         st.header("Nombre d'indices par type de document")
         type_calcul = st.selectbox('Sélectionnez le type de calcul', ['mean', 'max'], key='calcul_indices_type')
-        representation = st.selectbox('Sélectionnez le type de représentation', ['Graphique barre', 'Tableau'], key='rep_indices_type')
+        representation = st.selectbox('Sélectionnez le type de représentation', ['Graphique barre', 'Tableau'], key='rep_indices_type', index=0)  # Par défaut à "Graphique barre"
         if representation == "Tableau":
             if type_calcul == 'mean':
                 resultats = donnees.groupby('TYPE DE DOCUMENT')['Nombre d\'indices'].mean().reset_index()
@@ -324,68 +332,79 @@ def afficher_graphique(selectionne, donnees, projets, projet_selectionne):
     elif selectionne == "Durée entre versions de documents":
         st.header("Durée entre versions de documents")
         type_calcul = st.selectbox('Sélectionnez le type de calcul', ['mean', 'max'], key='calcul_duree_versions_type')
-        representation = st.selectbox('Sélectionnez le type de représentation', ['Boxplot', 'Graphique barre', 'Tableau'], key='rep_duree_versions_type')
+        categorie = st.selectbox('Sélectionnez la catégorie', ['LOT', 'TYPE DE DOCUMENT'], key='categorie_duree_versions_type')  # Choix entre Lot et Type de Document
+        representation = st.selectbox('Sélectionnez le type de représentation', ['Graphique barre', 'Tableau'], key='rep_duree_versions_type', index=0)  # Par défaut à "Graphique barre"
+        
+        # Calcul des durées entre indices pour chaque catégorie
+        donnees = donnees.sort_values(by=['TYPE DE DOCUMENT', 'INDICE', 'Date dépôt GED'])
+        donnees['Durée entre indices'] = donnees.groupby(['TYPE DE DOCUMENT', 'LOT'])['Date dépôt GED'].diff().dt.days
+
         if representation == "Tableau":
             if type_calcul == 'mean':
-                resultats = donnees.groupby('TYPE DE DOCUMENT')['Différence en jours'].mean().reset_index()
-                resultats.columns = ['TYPE DE DOCUMENT', 'Durée moyenne entre versions (jours)']
+                resultats = donnees.groupby(categorie)['Durée entre indices'].mean().reset_index()
+                resultats.columns = [categorie, 'Durée moyenne entre indices (jours)']
             elif type_calcul == 'max':
-                resultats = donnees.groupby('TYPE DE DOCUMENT')['Différence en jours'].max().reset_index()
-                resultats.columns = ['TYPE DE DOCUMENT', 'Durée maximum entre versions (jours)']
+                resultats = donnees.groupby(categorie)['Durée entre indices'].max().reset_index()
+                resultats.columns = [categorie, 'Durée maximum entre indices (jours)']
             resultats = resultats.sort_values(by=resultats.columns[1], ascending=False)
             st.dataframe(resultats)
-        elif representation == "Boxplot":
-            fig = px.box(donnees, x='TYPE DE DOCUMENT', y='Différence en jours', title='Durée entre Versions par Type de Document',
-                         labels={'Différence en jours': 'Durée entre Versions (jours)', 'TYPE DE DOCUMENT': 'Type de Document'})
-            st.plotly_chart(fig, use_container_width=True)
         elif representation == "Graphique barre":
             if type_calcul == 'mean':
-                resultats = donnees.groupby('TYPE DE DOCUMENT')['Différence en jours'].mean().reset_index()
-                title = 'Durée moyenne entre versions (jours) par Type de Document'
+                resultats = donnees.groupby(categorie)['Durée entre indices'].mean().reset_index()
+                title = f'Durée moyenne entre indices (jours) par {categorie}'
             elif type_calcul == 'max':
-                resultats = donnees.groupby('TYPE DE DOCUMENT')['Différence en jours'].max().reset_index()
-                title = 'Durée maximum entre versions (jours) par Type de Document'
+                resultats = donnees.groupby(categorie)['Durée entre indices'].max().reset_index()
+                title = f'Durée maximum entre indices (jours) par {categorie}'
             resultats = resultats.sort_values(by=resultats.columns[1], ascending=False)
-            fig = px.bar(resultats, x='TYPE DE DOCUMENT', y=resultats.columns[1], title=title, color='TYPE DE DOCUMENT')
-            fig.update_layout(showlegend=True, legend_title_text='Type de Document')
+            fig = px.bar(resultats, x=categorie, y=resultats.columns[1], title=title, color=categorie)
+            fig.update_layout(showlegend=True, legend_title_text=categorie)
             fig.update_traces(texttemplate='%{y:.2f}', textposition='outside')
             st.plotly_chart(fig, use_container_width=True)
 
     # Onglet 8: Diagramme de Gantt séquentiel
-    elif selectionne == "Diagramme de Gantt séquentiel":
-        st.header("Diagramme de Gantt des Projets")
+    elif selectionne == "Calendrier des Projets":
+        st.header("Calendrier des Projets")
+        # Ajouter le selectbox pour choisir entre "Lot" et "Type de Document"
+        categorie_gantt = st.selectbox('Sélectionnez la catégorie', ['LOT', 'TYPE DE DOCUMENT'], key='categorie_gantt')  # Choix entre Lot et Type de Document
+
         # Préparer les données pour le diagramme de Gantt
-        donnees_gantt = donnees.groupby('LOT').agg({
+        donnees_gantt = donnees.groupby(categorie_gantt).agg({
             'Date dépôt GED': ['min', 'max'],
             'Libellé du document': 'count'
         }).reset_index()
-        donnees_gantt.columns = ['LOT', 'Date début', 'Date fin', 'Nombre de documents']
+        donnees_gantt.columns = [categorie_gantt, 'Date début', 'Date fin', 'Nombre de documents']
         donnees_gantt['Durée en jours'] = (donnees_gantt['Date fin'] - donnees_gantt['Date début']).dt.days
 
-        # Trier les lots par date de début
+        # Trier les catégories par date de début
         donnees_gantt = donnees_gantt.sort_values('Date début')
 
         # Utiliser une palette de couleurs dynamique pour éviter les répétitions
         couleurs = px.colors.qualitative.Plotly * 5  # Multiplier la palette pour plus de variété
 
+        # Ajouter les noms des types de documents utilisés pour chaque lot dans l'ordre d'apparition
+        type_documents_par_lot = donnees.groupby(['LOT', 'TYPE DE DOCUMENT'])['Date dépôt GED'].min().reset_index().sort_values(['LOT', 'Date dépôt GED'])
+        type_documents_par_lot = type_documents_par_lot.groupby('LOT')['TYPE DE DOCUMENT'].apply(lambda x: ', '.join(x)).reset_index()
+
+        donnees_gantt = donnees_gantt.merge(type_documents_par_lot, on='LOT', how='left')
+
         fig_gantt = px.timeline(
             donnees_gantt,
             x_start='Date début',
             x_end='Date fin',
-            y='LOT',
-            color='LOT',
-            hover_data=['Durée en jours', 'Nombre de documents'],
+            y=categorie_gantt,
+            color=categorie_gantt,
+            hover_data=['Durée en jours', 'Nombre de documents', 'TYPE DE DOCUMENT'],
             color_discrete_sequence=couleurs,
-            title='Diagramme de Gantt des Projets par Lot'
+            title=f'Calendrier des Projets par {categorie_gantt}'
         )
         fig_gantt.update_layout(
             xaxis_title='Date',
-            yaxis_title='Lot',
+            yaxis_title=categorie_gantt,
             height=600,
             width=1000
         )
         fig_gantt.update_traces(
-            hovertemplate='<b>Lot:</b> %{y}<br><b>Début:</b> %{x|%d %b %Y}<br><b>Fin:</b> %{customdata[1]|%d %b %Y}<br><b>Durée:</b> %{customdata[0]} jours<br><b>Nombre de documents:</b> %{customdata[2]}'
+            hovertemplate=f'<b>{categorie_gantt}:</b> %{{y}}<br><b>Début:</b> %{{x|%d %b %Y}}<br><b>Fin:</b> %{{x_end|%d %b %Y}}<br><b>Durée:</b> %{{customdata[0]}} jours<br><b>Nombre de documents:</b> %{{customdata[1]}}<br><b>Type de documents:</b> %{{customdata[2]}}'
         )
         st.plotly_chart(fig_gantt, use_container_width=True)
 
