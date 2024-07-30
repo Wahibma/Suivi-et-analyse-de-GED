@@ -332,7 +332,7 @@ def afficher_graphique(selectionne, donnees, projets, projet_selectionne):
     elif selectionne == "Durée entre versions de documents":
         st.header("Durée entre versions de documents")
         type_calcul = st.selectbox('Sélectionnez le type de calcul', ['mean', 'max'], key='calcul_duree_versions_type')
-        categorie = st.selectbox('Sélectionnez la catégorie', ['LOT', 'TYPE DE DOCUMENT'], key='categorie_duree_versions_type')  # Choix entre Lot et Type de Document
+        categorie = st.selectbox('Sélectionnez la catégorie', ['TYPE DE DOCUMENT','LOT'], key='categorie_duree_versions_type')  # Choix entre Lot et Type de Document
         representation = st.selectbox('Sélectionnez le type de représentation', ['Graphique barre', 'Tableau'], key='rep_duree_versions_type', index=0)  # Par défaut à "Graphique barre"
         
         if representation == "Tableau":
@@ -378,7 +378,7 @@ def afficher_graphique(selectionne, donnees, projets, projet_selectionne):
         else:
             st.write("Pas de données disponibles pour les durées entre indices.")
 
-    # Onglet 8: Calendrier des Projets
+    # Onglet 8: Calendrier des Projets 
     elif selectionne == "Calendrier des Projets":
         st.header("Calendrier des Projets")
         # Ajouter le selectbox pour choisir entre "Lot" et "Type de Document"
