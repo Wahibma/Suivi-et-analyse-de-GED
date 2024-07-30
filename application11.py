@@ -424,7 +424,7 @@ def afficher_graphique(selectionne, donnees, projets, projet_selectionne):
         st.plotly_chart(fig_gantt, use_container_width=True)
 
         # Afficher le tableau récapitulatif
-        st.subheader("Tableau récapitulatif")
+        st.subheader("Détails des projets")
         st.dataframe(donnees_gantt)
 
 # Exécution principale de l'application
