@@ -334,26 +334,29 @@ def afficher_graphique(selectionne, donnees, projets, projet_selectionne):
         type_calcul = st.selectbox('Sélectionnez le type de calcul', ['mean', 'max'], key='calcul_duree_versions_type')
         categorie = st.selectbox('Sélectionnez la catégorie', ['LOT', 'TYPE DE DOCUMENT'], key='categorie_duree_versions_type')  # Choix entre Lot et Type de Document
         representation = st.selectbox('Sélectionnez le type de représentation', ['Graphique barre', 'Tableau'], key='rep_duree_versions_type', index=0)  # Par défaut à "Graphique barre"
+        
+        # Calcul des durées entre indices pour chaque catégorie
+        donnees = donnees.sort_values(by=['TYPE DE DOCUMENT', 'INDICE', 'Date dépôt GED'])
+        donnees['Durée entre indices'] = donnees.groupby(['TYPE DE DOCUMENT', 'LOT'])['Date dépôt GED'].diff().dt.days
+
         if representation == "Tableau":
             if type_calcul == 'mean':
-                resultats = donnees.groupby(categorie)['Durée entre versions'].mean().reset_index()
-                resultats.columns = [categorie, 'Durée moyenne entre versions (jours)']
+                resultats = donnees.groupby(categorie)['Durée entre indices'].mean().reset_index()
+                resultats.columns = [categorie, 'Durée moyenne entre indices (jours)']
             elif type_calcul == 'max':
-                resultats = donnees.groupby(categorie)['Durée entre versions'].max().reset_index()
-                resultats.columns = [categorie, 'Durée maximum entre versions (jours)']
+                resultats = donnees.groupby(categorie)['Durée entre indices'].max().reset_index()
+                resultats.columns = [categorie, 'Durée maximum entre indices (jours)']
             resultats = resultats.sort_values(by=resultats.columns[1], ascending=False)
             st.dataframe(resultats)
         elif representation == "Graphique barre":
             if type_calcul == 'mean':
-                resultats = donnees.groupby(categorie)['Durée entre versions'].mean().reset_index()
-                title = f'Durée moyenne entre versions (jours) par {categorie}'
+                resultats = donnees.groupby(categorie)['Durée entre indices'].mean().reset_index()
+                title = f'Durée moyenne entre indices (jours) par {categorie}'
             elif type_calcul == 'max':
-                resultats = donnees.groupby(categorie)['Durée entre versions'].max().reset_index()
-                title = f'Durée maximum entre versions (jours) par {categorie}'
+                resultats = donnees.groupby(categorie)['Durée entre indices'].max().reset_index()
+                title = f'Durée maximum entre indices (jours) par {categorie}'
             resultats = resultats.sort_values(by=resultats.columns[1], ascending=False)
-            resultats['Indice précédent'] = resultats[categorie].shift(1)
-            resultats['Passage indice'] = resultats.apply(lambda row: f"{row['Indice précédent']} à {row[categorie]}", axis=1)
-            fig = px.bar(resultats, x='Passage indice', y=resultats.columns[1], title=title, color='Passage indice')
+            fig = px.bar(resultats, x=categorie, y=resultats.columns[1], title=title, color=categorie)
             fig.update_layout(showlegend=True, legend_title_text=categorie)
             fig.update_traces(texttemplate='%{y:.2f}', textposition='outside')
             st.plotly_chart(fig, use_container_width=True)
@@ -375,12 +378,14 @@ def afficher_graphique(selectionne, donnees, projets, projet_selectionne):
         # Trier les catégories par date de début
         donnees_gantt = donnees_gantt.sort_values('Date début')
 
-        # Ajouter les étiquettes des types de documents pour chaque lot dans l'ordre d'apparition
-        donnees['Types de documents'] = donnees.groupby('LOT')['TYPE DE DOCUMENT'].transform(lambda x: ', '.join(x.unique()))
-        donnees_gantt['Types de documents'] = donnees_gantt[categorie_gantt].map(donnees.set_index('LOT')['Types de documents'].to_dict())
-
         # Utiliser une palette de couleurs dynamique pour éviter les répétitions
         couleurs = px.colors.qualitative.Plotly * 5  # Multiplier la palette pour plus de variété
+
+        # Ajouter les noms des types de documents utilisés pour chaque lot dans l'ordre d'apparition
+        type_documents_par_lot = donnees.groupby(['LOT', 'TYPE DE DOCUMENT'])['Date dépôt GED'].min().reset_index().sort_values(['LOT', 'Date dépôt GED'])
+        type_documents_par_lot = type_documents_par_lot.groupby('LOT')['TYPE DE DOCUMENT'].apply(lambda x: ', '.join(x)).reset_index()
+
+        donnees_gantt = donnees_gantt.merge(type_documents_par_lot, on='LOT', how='left')
 
         fig_gantt = px.timeline(
             donnees_gantt,
@@ -388,7 +393,7 @@ def afficher_graphique(selectionne, donnees, projets, projet_selectionne):
             x_end='Date fin',
             y=categorie_gantt,
             color=categorie_gantt,
-            hover_data=['Durée en jours', 'Nombre de documents', 'Types de documents'],
+            hover_data=['Durée en jours', 'Nombre de documents', 'TYPE DE DOCUMENT'],
             color_discrete_sequence=couleurs,
             title=f'Calendrier des Projets par {categorie_gantt}'
         )
@@ -399,7 +404,7 @@ def afficher_graphique(selectionne, donnees, projets, projet_selectionne):
             width=1000
         )
         fig_gantt.update_traces(
-            hovertemplate=f'<b>{categorie_gantt}:</b> %{{y}}<br><b>Début:</b> %{{x|%d %b %Y}}<br><b>Fin:</b> %{{customdata[0]|%d %b %Y}}<br><b>Durée:</b> %{{customdata[1]}} jours<br><b>Nombre de documents:</b> %{{customdata[2]}}<br><b>Types de documents:</b> %{{customdata[3]}}'
+            hovertemplate=f'<b>{categorie_gantt}:</b> %{{y}}<br><b>Début:</b> %{{x|%d %b %Y}}<br><b>Fin:</b> %{{x_end|%d %b %Y}}<br><b>Durée:</b> %{{customdata[0]}} jours<br><b>Nombre de documents:</b> %{{customdata[1]}}<br><b>Type de documents:</b> %{{customdata[2]}}'
         )
         st.plotly_chart(fig_gantt, use_container_width=True)
 
