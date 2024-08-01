@@ -82,7 +82,7 @@ def pretraiter_donnees(donnees):
     # Calculer les durées entre chaque version pour chaque document
     donnees = donnees.sort_values(by=['Libellé du document', 'Date dépôt GED'])
     donnees['Durée entre versions'] = donnees.groupby('Libellé du document')['Date dépôt GED'].diff().dt.days
-    
+
     return donnees
 
 # Fonction pour afficher le menu latéral
@@ -91,7 +91,7 @@ def afficher_menu():
         selectionne = option_menu(
             menu_title="Menu",
             options=["Flux des documents", "Évolution des types de documents", "Analyse des documents par lot et indice", "Identification des acteurs principaux", "Analyse de la masse de documents par projet", "Nombre d'indices par type de document", "Durée entre versions de documents", "Calendrier des Projets", "Calendrier par Lot"],
-            icons=["exchange", "line-chart", "bar-chart", "users", "chart-bar", "file-text", "clock", "calendar"],
+            icons=["exchange", "line-chart", "bar-chart", "users", "chart-bar", "file-text", "clock", "calendar", "calendar"],
             menu_icon="cast",
             default_index=0,
             orientation="vertical"
@@ -117,9 +117,6 @@ def synchroniser_filtres(projets):
 
 # Fonction pour afficher les graphiques selon l'onglet sélectionné
 def afficher_graphique(selectionne, donnees, projets, projet_selectionne):
-    # Palette de couleurs à utiliser
-    couleurs = px.colors.qualitative.Plotly * 5
-
     # Onglet 1: Flux des documents
     if selectionne == "Flux des documents":
         st.header("Flux des documents")
@@ -267,8 +264,8 @@ def afficher_graphique(selectionne, donnees, projets, projet_selectionne):
                 donnees_barre.append({
                     'Chantier': projet,
                     'Masse de documents': total_documents,
-                    'Date début': date_debut.strftime('%Y-%m-%d'),
-                    'Date fin': date_fin.strftime('%Y-%m-%d')
+                    'Date début': date_debut.strftime('%d %b %Y'),
+                    'Date fin': date_fin.strftime('%d %b %Y')
                 })
             df_barre = pd.DataFrame(donnees_barre)
             df_barre = df_barre.sort_values(by='Masse de documents', ascending=False)
@@ -296,7 +293,8 @@ def afficher_graphique(selectionne, donnees, projets, projet_selectionne):
                 title='Analyse de la masse de documents par projet',
                 xaxis_title='Chantier', yaxis_title='Masse de documents',
                 font=dict(size=15),
-                height=450, width=1200,
+                height=450,
+                width=1200,
                 yaxis=dict(title='Masse de documents', showgrid=True, zeroline=True, showline=True, showticklabels=True),
                 xaxis=dict(title='Chantier', showgrid=True, zeroline=True, showline=True, showticklabels=True)
             )
@@ -366,7 +364,7 @@ def afficher_graphique(selectionne, donnees, projets, projet_selectionne):
         for doc_type, group in donnees.groupby('TYPE DE DOCUMENT'):
             group = group.sort_values(by=['Libellé du document', 'INDICE'])
             group['Durée entre indices'] = group.groupby('Libellé du document')['Date dépôt GED'].diff().dt.days
-            group['Passage indice'] = group.groupby('Libellé du document')['INDICE'].apply(lambda x: x.shift(1) + ' à ' + x)
+            group['Passage indice'] = group.groupby('Libellé du document')['INDICE'].transform(lambda x: x.shift(1) + ' à ' + x)
             for _, row in group.iterrows():
                 if pd.notna(row['Durée entre indices']):
                     durées_indices.append({
@@ -402,6 +400,12 @@ def afficher_graphique(selectionne, donnees, projets, projet_selectionne):
         # Trier les catégories par date de début
         donnees_gantt = donnees_gantt.sort_values('Date début')
 
+        # Utiliser une palette de couleurs dynamique pour éviter les répétitions
+        couleurs = px.colors.qualitative.Plotly * 5  # Multiplier la palette pour plus de variété
+
+        # S'assurer que les barres sont affichées même si la durée est nulle
+        donnees_gantt['Date fin'] = donnees_gantt.apply(lambda x: x['Date fin'] if x['Durée en jours'] > 0 else x['Date début'] + pd.Timedelta(days=1), axis=1)
+
         fig_gantt = px.timeline(
             donnees_gantt,
             x_start='Date début',
@@ -424,60 +428,56 @@ def afficher_graphique(selectionne, donnees, projets, projet_selectionne):
         st.plotly_chart(fig_gantt, use_container_width=True)
 
         # Afficher le tableau récapitulatif
-        st.subheader("Détails des projets")
         donnees_gantt['Date début'] = donnees_gantt['Date début'].dt.strftime('%d %b %Y')
         donnees_gantt['Date fin'] = donnees_gantt['Date fin'].dt.strftime('%d %b %Y')
+        st.subheader("Détails des projets")
         st.dataframe(donnees_gantt)
 
     # Onglet 9: Calendrier par Lot
     elif selectionne == "Calendrier par Lot":
         st.header("Calendrier par Lot")
-        lot_selectionne = st.selectbox('Sélectionnez un lot', donnees['LOT'].unique(), key='lot_selectionne')
+        lot_selectionne = st.selectbox('Sélectionnez un Lot', donnees['LOT'].unique())
+        donnees_filtrees = donnees[donnees['LOT'] == lot_selectionne]
 
-        # Filtrer les données pour le lot sélectionné
-        donnees_lot = donnees[donnees['LOT'] == lot_selectionne]
-
-        # Préparer les données pour le diagramme de Gantt
-        donnees_gantt_lot = donnees_lot.groupby('TYPE DE DOCUMENT').agg({
+        donnees_gantt = donnees_filtrees.groupby('TYPE DE DOCUMENT').agg({
             'Date dépôt GED': ['min', 'max'],
             'Libellé du document': 'count'
         }).reset_index()
-        donnees_gantt_lot.columns = ['TYPE DE DOCUMENT', 'Date début', 'Date fin', 'Nombre de documents']
-        donnees_gantt_lot['Durée en jours'] = (donnees_gantt_lot['Date fin'] - donnees_gantt_lot['Date début']).dt.days
+        donnees_gantt.columns = ['TYPE DE DOCUMENT', 'Date début', 'Date fin', 'Nombre de documents']
+        donnees_gantt['Durée en jours'] = (donnees_gantt['Date fin'] - donnees_gantt['Date début']).dt.days
 
-        # Ajouter les types de documents utilisés pour chaque type de document dans l'ordre d'apparition
-        donnees_sorted_lot = donnees_lot.sort_values(by='Date dépôt GED')
-        donnees_gantt_lot['Types de documents'] = donnees_sorted_lot.groupby('TYPE DE DOCUMENT')['TYPE DE DOCUMENT'].apply(lambda x: ', '.join(x.drop_duplicates())).reset_index(drop=True)
+        donnees_sorted = donnees_filtrees.sort_values(by='Date dépôt GED')
+        donnees_gantt['Types de documents'] = donnees_sorted.groupby('TYPE DE DOCUMENT')['TYPE DE DOCUMENT'].apply(lambda x: ', '.join(x.drop_duplicates())).reset_index(drop=True)
+        donnees_gantt = donnees_gantt.sort_values('Date début')
+        couleurs = px.colors.qualitative.Plotly * 5
 
-        # Trier les types de documents par date de début
-        donnees_gantt_lot = donnees_gantt_lot.sort_values('Date début')
+        donnees_gantt['Date fin'] = donnees_gantt.apply(lambda x: x['Date fin'] if x['Durée en jours'] > 0 else x['Date début'] + pd.Timedelta(days=1), axis=1)
 
-        fig_gantt_lot = px.timeline(
-            donnees_gantt_lot,
+        fig_gantt = px.timeline(
+            donnees_gantt,
             x_start='Date début',
             x_end='Date fin',
             y='TYPE DE DOCUMENT',
             color='TYPE DE DOCUMENT',
             hover_data=['Durée en jours', 'Nombre de documents', 'Types de documents'],
             color_discrete_sequence=couleurs,
-            title=f'Calendrier des Documents pour le Lot {lot_selectionne}'
+            title=f'Calendrier par Lot: {lot_selectionne}'
         )
-        fig_gantt_lot.update_layout(
+        fig_gantt.update_layout(
             xaxis_title='Date',
-            yaxis_title='Type de Document',
+            yaxis_title='TYPE DE DOCUMENT',
             height=600,
             width=1000
         )
-        fig_gantt_lot.update_traces(
+        fig_gantt.update_traces(
             hovertemplate=f'<b>Type de Document:</b> %{{y}}<br><b>Début:</b> %{{base|%d %b %Y}}<br><b>Fin:</b> %{{x|%d %b %Y}}<br><b>Durée:</b> %{{customdata[0]}} jours<br><b>Nombre de documents:</b> %{{customdata[1]}}<br><b>Types de documents:</b> %{{customdata[2]}}'
         )
-        st.plotly_chart(fig_gantt_lot, use_container_width=True)
+        st.plotly_chart(fig_gantt, use_container_width=True)
 
-        # Afficher le tableau récapitulatif
-        st.subheader("Détails des documents pour le Lot")
-        donnees_gantt_lot['Date début'] = donnees_gantt_lot['Date début'].dt.strftime('%d %b %Y')
-        donnees_gantt_lot['Date fin'] = donnees_gantt_lot['Date fin'].dt.strftime('%d %b %Y')
-        st.dataframe(donnees_gantt_lot)
+        donnees_gantt['Date début'] = donnees_gantt['Date début'].dt.strftime('%d %b %Y')
+        donnees_gantt['Date fin'] = donnees_gantt['Date fin'].dt.strftime('%d %b %Y')
+        st.subheader("Détails du Lot")
+        st.dataframe(donnees_gantt)
 
 # Exécution principale de l'application
 if __name__ == "__main__":
