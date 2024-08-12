@@ -1,7 +1,6 @@
 setuptools
 numpy==1.21.0
 pandas==1.5.3
-r requirements_base.txt
 scikit-learn==1.2.2
 joblib==1.2.0
 fuzzywuzzy==0.18.0
