@@ -1,5 +1,7 @@
+setuptools
+numpy==1.21.0
 pandas==1.5.3
-numpy==1.23.5
+r requirements_base.txt
 scikit-learn==1.2.2
 joblib==1.2.0
 fuzzywuzzy==0.18.0
@@ -10,4 +12,3 @@ streamlit==1.12.2
 streamlit-option-menu==0.3.2
 jupyter_dash
 dash
-setuptools
