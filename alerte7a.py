@@ -12,6 +12,14 @@ projets = {
     'GOODLIFE': 'GOODLIFE.csv',
     'PECM': 'PECM.csv'
 }
+ Fonction pour afficher le logo
+def afficher_logo():
+    chemin_logo = os.path.join('logo1.jpeg')
+    try:
+        logo = Image.open(chemin_logo)
+        st.image(logo, width=150)
+    except FileNotFoundError:
+        st.error(f"Le fichier logo n'a pas été trouvé à l'emplacement : {chemin_logo}")
 
 # Styles CSS personnalisés
 styles = """
