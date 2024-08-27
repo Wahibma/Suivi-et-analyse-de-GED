@@ -12,7 +12,7 @@ projets = {
     'GOODLIFE': 'GOODLIFE.csv',
     'PECM': 'PECM.csv'
 }
- Fonction pour afficher le logo
+ # Fonction pour afficher le logo
 def afficher_logo():
     chemin_logo = os.path.join('logo1.jpeg')
     try:
